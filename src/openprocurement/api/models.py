@@ -267,14 +267,12 @@ class Location(Model):
 
     def validate_latitude(self, data, latitude):
         if latitude:
-            if type(latitude) is str:
-                latitude_str = latitude
-            else:
-                latitude_str = "{:.14f}".format(latitude)
-            valid_latitude = COORDINATES_REG_EXP.match(str(latitude_str))
+            if not isinstance(latitude, basestring):
+                latitude = "{:.14f}".format(latitude)
+            valid_latitude = COORDINATES_REG_EXP.match(str(latitude))
             if (valid_latitude is not None and
-                    valid_latitude.group() == str(latitude_str)):
-                if not -90 <= float(latitude_str) <= 90:
+                    valid_latitude.group() == str(latitude)):
+                if not -90 <= float(latitude) <= 90:
                     raise ValidationError(
                         u"Invalid value. Latitude must be between -90 and 90 degree.")
             else:
@@ -283,7 +281,7 @@ class Location(Model):
 
     def validate_longitude(self, data, longitude):
         if longitude:
-            if not isinstance(longitude, str):
+            if not isinstance(longitude, basestring):
                 longitude = "{:.14f}".format(longitude)
             valid_longitude = COORDINATES_REG_EXP.match(str(longitude))
             if (valid_longitude is not None and
@@ -418,6 +416,27 @@ class Identifier(Model):
     uri = URLType()  # A URI to identify the organization.
 
 
+class ItemValue(Value):
+    currency = StringType(max_length=3, min_length=3)
+    valueAddedTaxIncluded = BooleanType()
+
+    @serializable(serialized_name="currency", serialize_when_none=False)
+    def unit_currency(self):
+        if self.currency is not None:
+            return self.currency
+        return get_tender(self).value.currency
+
+    @serializable(serialized_name="valueAddedTaxIncluded", serialize_when_none=False)
+    def unit_valueAddedTaxIncluded(self):
+        if self.valueAddedTaxIncluded is not None:
+            return self.valueAddedTaxIncluded
+        return get_tender(self).value.valueAddedTaxIncluded
+
+
+class ItemUnit(Unit):
+    value = ModelType(ItemValue)
+
+
 class Item(Model):
     """A good, service, or work to be contracted."""
     id = StringType(required=True, min_length=1, default=lambda: uuid4().hex)
@@ -426,7 +445,7 @@ class Item(Model):
     description_ru = StringType()
     classification = ModelType(CPVClassification)
     additionalClassifications = ListType(ModelType(Classification))
-    unit = ModelType(Unit)  # Description of the unit which the good comes in e.g. hours, kilograms
+    unit = ModelType(ItemUnit)  # Description of the unit which the good comes in e.g. hours, kilograms
     quantity = IntType()  # The number of units required
     deliveryDate = ModelType(Period)
     deliveryAddress = ModelType(Address)
