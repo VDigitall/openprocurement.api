@@ -416,27 +416,6 @@ class Identifier(Model):
     uri = URLType()  # A URI to identify the organization.
 
 
-class ItemValue(Value):
-    currency = StringType(max_length=3, min_length=3)
-    valueAddedTaxIncluded = BooleanType()
-
-    @serializable(serialized_name="currency", serialize_when_none=False)
-    def unit_currency(self):
-        if self.currency is not None:
-            return self.currency
-        return get_tender(self).value.currency
-
-    @serializable(serialized_name="valueAddedTaxIncluded", serialize_when_none=False)
-    def unit_valueAddedTaxIncluded(self):
-        if self.valueAddedTaxIncluded is not None:
-            return self.valueAddedTaxIncluded
-        return get_tender(self).value.valueAddedTaxIncluded
-
-
-class ItemUnit(Unit):
-    value = ModelType(ItemValue)
-
-
 class Item(Model):
     """A good, service, or work to be contracted."""
     id = StringType(required=True, min_length=1, default=lambda: uuid4().hex)
@@ -445,7 +424,7 @@ class Item(Model):
     description_ru = StringType()
     classification = ModelType(CPVClassification)
     additionalClassifications = ListType(ModelType(Classification))
-    unit = ModelType(ItemUnit)  # Description of the unit which the good comes in e.g. hours, kilograms
+    unit = ModelType(Unit)  # Description of the unit which the good comes in e.g. hours, kilograms
     quantity = IntType()  # The number of units required
     deliveryDate = ModelType(Period)
     deliveryAddress = ModelType(Address)
